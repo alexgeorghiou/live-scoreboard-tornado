@@ -131,9 +131,7 @@ def test_full_period_flow_to_penalties() -> None:
 
 
 def test_extra_time_requires_level_score() -> None:
-    state = play(
-        kickoff(), goal("home", "Silva"), period("half_time"), period("second_half")
-    )
+    state = play(kickoff(), goal("home", "Silva"), period("half_time"), period("second_half"))
     with pytest.raises(IllegalEventError, match="level"):
         play(state, period("extra_time_break"))
     assert play(state, period("full_time", 90)).period is Period.FULL_TIME

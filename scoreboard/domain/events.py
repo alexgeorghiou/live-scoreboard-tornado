@@ -9,7 +9,7 @@ match state. Validation here is purely structural; whether an event is legal
 from __future__ import annotations
 
 import uuid
-from dataclasses import asdict, dataclass, field
+from dataclasses import asdict, dataclass, field, replace
 from enum import StrEnum
 from typing import Any
 
@@ -96,11 +96,11 @@ class MatchEvent:
 
     def to_dict(self) -> dict[str, Any]:
         raw = asdict(self)
-        return {k: (str(v) if isinstance(v, StrEnum) else v) for k, v in raw.items() if v is not None}
+        return {
+            k: (str(v) if isinstance(v, StrEnum) else v) for k, v in raw.items() if v is not None
+        }
 
     def with_seq(self, seq: int) -> MatchEvent:
-        from dataclasses import replace
-
         return replace(self, seq=seq)
 
 
