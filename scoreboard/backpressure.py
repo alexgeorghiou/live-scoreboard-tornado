@@ -23,7 +23,7 @@ When the buffer is full the configured :class:`OverflowPolicy` decides:
 from __future__ import annotations
 
 import asyncio
-from collections import deque
+from collections import Counter, deque
 from dataclasses import dataclass
 from enum import StrEnum
 
@@ -109,25 +109,21 @@ class Outbox:
         self._drops_since_delivery += 1
         if self.max_drops and self._drops_since_delivery > self.max_drops:
             return False
-        # 1) Conflate: the incoming message supersedes the oldest one for its key.
-        newer_keys = {incoming_key}
-        for idx in range(len(self._items) - 1, -1, -1):
-            item = self._items[idx]
-            if item.key in newer_keys and self._has_later(idx, item.key, incoming_key):
+        # 1) Conflate: drop the oldest message that a newer one (queued or
+        #    incoming) supersedes. Scanning oldest-first, the first key seen
+        #    twice is necessarily followed by a newer message for that match.
+        counts = Counter(item.key for item in self._items)
+        counts[incoming_key] += 1
+        for idx, item in enumerate(self._items):
+            if counts[item.key] > 1:
                 del self._items[idx]
                 self.stats.conflated += 1
                 return True
-            newer_keys.add(item.key)
         # 2) Otherwise shed the oldest message and remember the match is stale.
         victim = self._items.popleft()
         self._stale.add(victim.key)
         self.stats.dropped += 1
         return True
-
-    def _has_later(self, idx: int, key: str, incoming_key: str) -> bool:
-        if key == incoming_key:
-            return True
-        return any(self._items[j].key == key for j in range(idx + 1, len(self._items)))
 
     async def get(self) -> Envelope:
         while not self._items:
