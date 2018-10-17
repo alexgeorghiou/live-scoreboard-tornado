@@ -42,7 +42,7 @@ def goal() -> dict:
 
 
 async def test_fan_out_only_to_subscribers_of_match(setup) -> None:
-    broker, service, hub = setup
+    _broker, service, hub = setup
     alice, bob = FakeSubscriber("alice"), FakeSubscriber("bob")
     state = await hub.subscribe(alice, "a")
     assert state.version == 1
