@@ -173,6 +173,7 @@ class ScoreboardSocket(WebSocketHandler):
     def evict(self, reason: str) -> None:
         if self._closing:
             return
+        self._closing = True
         log.info("evicting client %s: %s", self.client_id, reason)
         if reason == "slow consumer":
             self.ctx.evicted_slow += 1
