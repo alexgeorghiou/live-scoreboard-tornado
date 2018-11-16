@@ -2,9 +2,11 @@
 
 from __future__ import annotations
 
+import functools
 import hmac
 import json
 import time
+from collections.abc import Awaitable, Callable
 from http import HTTPStatus
 from typing import Any
 
@@ -58,28 +60,29 @@ class BaseHandler(RequestHandler):
         self.set_header("ETag", f'"{state.version}"')
         self.send_json(state.to_dict(), status)
 
-    def log_exception(self, typ, value, tb) -> None:  # type: ignore[no-untyped-def]
-        if isinstance(value, ApiError | ValidationError | IllegalEventError | LookupError):
-            return
-        if isinstance(value, MatchExistsError | VersionConflictError):
-            return
-        super().log_exception(typ, value, tb)
-
-    def _handle_request_exception(self, e: BaseException) -> None:
-        mapped = _map_exception(e)
-        if mapped is None:
-            super()._handle_request_exception(e)
-            return
-        if self._finished:
-            return
-        self.log_exception(type(e), e, e.__traceback__)
-        self.clear()
-        self.set_default_headers()
-        body = {"error": mapped.code, "message": mapped.message, **mapped.extra}
-        self.send_json(body, mapped.status_code)
-
     def write_error(self, status_code: int, **kwargs: Any) -> None:
-        self.finish(json.dumps({"error": "http_error", "message": self._reason}))
+        exc = kwargs.get("exc_info", (None, None, None))[1]
+        if isinstance(exc, ApiError):
+            body = {"error": exc.code, "message": exc.message, **exc.extra}
+        else:
+            body = {"error": "http_error", "message": self._reason}
+        self.finish(json.dumps(body, separators=(",", ":")))
+
+
+def translate_errors(method: Callable[..., Awaitable[None]]) -> Callable[..., Awaitable[None]]:
+    """Map domain exceptions onto JSON API errors with the right status code."""
+
+    @functools.wraps(method)
+    async def wrapper(self: BaseHandler, *args: Any, **kwargs: Any) -> None:
+        try:
+            await method(self, *args, **kwargs)
+        except Exception as exc:
+            mapped = _map_exception(exc)
+            if mapped is None or mapped is exc:
+                raise
+            raise mapped from exc
+
+    return wrapper
 
 
 def _map_exception(e: BaseException) -> ApiError | None:
@@ -109,6 +112,7 @@ def _expected_version(handler: RequestHandler) -> int | None:
 
 
 class MatchesHandler(BaseHandler):
+    @translate_errors
     async def get(self) -> None:
         states = sorted(await self.ctx.repository.list(), key=lambda s: s.match_id)
         self.send_json(
@@ -131,6 +135,7 @@ class MatchesHandler(BaseHandler):
             }
         )
 
+    @translate_errors
     async def post(self) -> None:
         state = await self.ctx.service.create_match(self.json_body())
         self.set_header("Location", f"/api/matches/{state.match_id}")
@@ -138,11 +143,13 @@ class MatchesHandler(BaseHandler):
 
 
 class MatchHandler(BaseHandler):
+    @translate_errors
     async def get(self, match_id: str) -> None:
         self.send_state(await self.ctx.repository.get(match_id))
 
 
 class EventsHandler(BaseHandler):
+    @translate_errors
     async def get(self, match_id: str) -> None:
         try:
             since = int(self.get_query_argument("since", "0"))
@@ -151,6 +158,7 @@ class EventsHandler(BaseHandler):
         events = await self.ctx.repository.events(match_id, since)
         self.send_json({"match_id": match_id, "events": [e.to_dict() for e in events]})
 
+    @translate_errors
     async def post(self, match_id: str) -> None:
         result = await self.ctx.service.post_event(
             match_id, self.json_body(), _expected_version(self)
@@ -167,12 +175,14 @@ class EventsHandler(BaseHandler):
 
 
 class SnapshotHandler(BaseHandler):
+    @translate_errors
     async def put(self, match_id: str) -> None:
         state = await self.ctx.service.put_snapshot(match_id, self.json_body())
         self.send_state(state)
 
 
 class HealthHandler(BaseHandler):
+    @translate_errors
     async def get(self) -> None:
         broker_ok = True
         ping = getattr(self.ctx.broker, "ping", None)
@@ -185,6 +195,7 @@ class HealthHandler(BaseHandler):
 
 
 class StatsHandler(BaseHandler):
+    @translate_errors
     async def get(self) -> None:
         hub = self.ctx.hub
         conns = list(self.ctx.connections)
