@@ -47,6 +47,9 @@ CLOSE_WRITE_TIMEOUT = 4002
 
 CONTROL_KEY = "_control"
 
+# Strong references to fire-and-forget cleanup tasks so they are not GC'd early.
+_background: set[asyncio.Future[None]] = set()
+
 
 class ScoreboardSocket(WebSocketHandler):
     ctx: AppContext
@@ -234,4 +237,6 @@ class ScoreboardSocket(WebSocketHandler):
             if task is not current:
                 task.cancel()
         self.subscriptions.clear()
-        asyncio.ensure_future(self.ctx.hub.remove(self))
+        cleanup = asyncio.ensure_future(self.ctx.hub.remove(self))
+        _background.add(cleanup)
+        cleanup.add_done_callback(_background.discard)
