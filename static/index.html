@@ -1,0 +1,84 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Live Scoreboard</title>
+  <link rel="stylesheet" href="/style.css">
+  <script type="module" src="/js/app.js"></script>
+</head>
+<body>
+  <header class="topbar">
+    <h1>Live Scoreboard</h1>
+    <div class="conn" id="conn" data-state="connecting">
+      <span class="dot"></span>
+      <span id="conn-label">connecting</span>
+      <span id="conn-rtt" class="muted"></span>
+    </div>
+  </header>
+
+  <main class="layout">
+    <aside class="panel">
+      <h2>Matches</h2>
+      <ul id="match-list" class="match-list" aria-live="polite"></ul>
+      <p id="match-empty" class="muted" hidden>No matches yet. Create one below or run the simulator.</p>
+
+      <details class="console">
+        <summary>Feed console</summary>
+        <form id="create-form" class="stack">
+          <input name="id" placeholder="match id (optional)" pattern="[a-z0-9][a-z0-9-]*">
+          <input name="home_team" placeholder="home team" required>
+          <input name="away_team" placeholder="away team" required>
+          <input name="competition" placeholder="competition">
+          <button type="submit">Create match</button>
+        </form>
+        <form id="event-form" class="stack">
+          <select name="match_id" id="event-match" required></select>
+          <select name="type" id="event-type">
+            <option value="period_change">period change</option>
+            <option value="goal">goal</option>
+            <option value="card">card</option>
+            <option value="substitution">substitution</option>
+          </select>
+          <input name="minute" type="number" min="0" max="150" value="0" placeholder="minute">
+          <select name="team"><option value="home">home</option><option value="away">away</option></select>
+          <input name="player" placeholder="player (goal / card)">
+          <select name="card"><option value="yellow">yellow</option><option value="red">red</option></select>
+          <input name="player_off" placeholder="player off">
+          <input name="player_on" placeholder="player on">
+          <select name="period">
+            <option>first_half</option><option>half_time</option><option>second_half</option>
+            <option>extra_time_break</option><option>extra_time_first</option>
+            <option>extra_time_half_time</option><option>extra_time_second</option>
+            <option>penalties</option><option>full_time</option>
+          </select>
+          <input name="token" type="password" placeholder="API token (if enabled)" autocomplete="off">
+          <button type="submit">Post event</button>
+        </form>
+        <p id="console-status" class="muted" role="status"></p>
+      </details>
+    </aside>
+
+    <section id="boards" class="boards" aria-live="polite">
+      <p id="boards-empty" class="muted">Pick a match to follow it live.</p>
+    </section>
+  </main>
+
+  <template id="board-template">
+    <article class="board">
+      <header class="board-head">
+        <span class="competition"></span>
+        <span class="period"></span>
+        <button class="close" type="button" aria-label="Stop following">&times;</button>
+      </header>
+      <div class="scoreline">
+        <span class="team home"></span>
+        <span class="score"><span class="home-score">0</span><span class="sep">-</span><span class="away-score">0</span></span>
+        <span class="team away"></span>
+      </div>
+      <ol class="timeline"></ol>
+      <footer class="board-foot muted"><span class="version"></span></footer>
+    </article>
+  </template>
+</body>
+</html>
