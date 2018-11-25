@@ -24,7 +24,8 @@ class ScoreboardTestCase(AsyncHTTPTestCase):
         return AppContext.from_parts(settings, InMemoryMatchRepository(), InMemoryBroker())
 
     def get_app(self):  # type: ignore[no-untyped-def]
-        settings = Settings(**{"ping_interval": 5.0, "idle_timeout": 15.0, **self.settings_overrides})
+        defaults: dict[str, Any] = {"ping_interval": 5.0, "idle_timeout": 15.0}
+        settings = Settings(**{**defaults, **self.settings_overrides})
         self.ctx = self.make_context(settings)
         return make_app(self.ctx)
 
