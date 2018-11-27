@@ -63,7 +63,7 @@ class Outbox:
         if maxsize < 1:
             raise ValueError("maxsize must be positive")
         self.maxsize = maxsize
-        self.policy = policy
+        self.policy = OverflowPolicy(policy)
         self.max_drops = max_drops
         self.stats = OutboxStats()
         self._items: deque[Envelope] = deque()
