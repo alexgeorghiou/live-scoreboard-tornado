@@ -17,7 +17,7 @@ from scoreboard.repository.redis_repo import RedisMatchRepository
 from tests.factories import new_state
 
 
-@pytest.fixture(params=["memory", "redis"])
+@pytest.fixture(params=["memory", "fakeredis"])
 async def repo(request):
     if request.param == "memory":
         yield InMemoryMatchRepository()
