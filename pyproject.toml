@@ -25,6 +25,7 @@ dev = [
 
 [project.scripts]
 scoreboard = "scoreboard.app:main"
+scoreboard-sim = "scoreboard.simulator:main"
 
 [tool.setuptools.packages.find]
 include = ["scoreboard*"]
