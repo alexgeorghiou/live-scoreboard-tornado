@@ -5,6 +5,7 @@ from __future__ import annotations
 import asyncio
 import contextlib
 import logging
+import os
 import signal
 from pathlib import Path
 
@@ -24,7 +25,9 @@ from scoreboard.web.socket import ScoreboardSocket
 
 log = logging.getLogger("scoreboard")
 
-STATIC_DIR = Path(__file__).resolve().parent.parent / "static"
+STATIC_DIR = Path(
+    os.environ.get("SCOREBOARD_STATIC_DIR") or Path(__file__).resolve().parent.parent / "static"
+)
 MATCH_ID = r"(?P<match_id>[a-z0-9][a-z0-9-]{0,63})"
 
 
