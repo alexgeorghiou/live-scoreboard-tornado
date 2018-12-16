@@ -1,0 +1,42 @@
+# Two scoreboard instances behind no load balancer, sharing one Redis.
+# Open http://localhost:8888 and http://localhost:8889 side by side: events
+# posted to either instance appear live on both.
+services:
+  redis:
+    image: redis:7.4-alpine
+    command: ["redis-server", "--save", "", "--appendonly", "no"]
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 2s
+      retries: 10
+
+  scoreboard-a: &scoreboard
+    build: .
+    environment:
+      REDIS_URL: redis://redis:6379/0
+      API_TOKEN: ${API_TOKEN:-}
+      PING_INTERVAL: "15"
+      IDLE_TIMEOUT: "45"
+      OUTBOX_SIZE: "64"
+      OVERFLOW_POLICY: drop_oldest
+    ports:
+      - "8888:8888"
+    depends_on:
+      redis:
+        condition: service_healthy
+
+  scoreboard-b:
+    <<: *scoreboard
+    ports:
+      - "8889:8888"
+
+  simulator:
+    build: .
+    profiles: ["demo"]
+    command: ["scoreboard-sim", "--url", "http://scoreboard-a:8888", "--matches", "3", "--tick", "1"]
+    environment:
+      API_TOKEN: ${API_TOKEN:-}
+    depends_on:
+      scoreboard-a:
+        condition: service_healthy
