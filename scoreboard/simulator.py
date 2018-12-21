@@ -13,6 +13,7 @@ import argparse
 import asyncio
 import json
 import logging
+import os
 import random
 from collections.abc import Iterator
 from dataclasses import dataclass, field
@@ -185,7 +186,7 @@ def main() -> None:
     parser.add_argument("--matches", type=int, default=3)
     parser.add_argument("--tick", type=float, default=1.0, help="seconds per match minute")
     parser.add_argument("--prefix", default="demo")
-    parser.add_argument("--token", default="")
+    parser.add_argument("--token", default=os.environ.get("API_TOKEN", ""))
     logging.basicConfig(level=logging.INFO, format="%(asctime)s %(name)s: %(message)s")
     asyncio.run(main_async(parser.parse_args()))
 
